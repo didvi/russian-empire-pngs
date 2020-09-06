@@ -5,8 +5,6 @@ import skimage.io as skio
 import argparse
 import os
 
-MAX_OFFSET = 30
-
 def compute_metric(img_1, img_2, metric='ssd'):
     # Computes similarity metric for two images
     if metric == 'ssd':
@@ -14,14 +12,14 @@ def compute_metric(img_1, img_2, metric='ssd'):
     else:
         return np.sum((img_1-img_2)**2)
 
-def align(channel_1, channel_2, method='exhaustive', metric='ssd'):
+def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=15):
     # Returns displacement (x, y) of channel 2 where channel 2 is offset to match channel 1 by some metric   
     if method == 'exhaustive':
         min_score = float('inf')
         displacement = ()
         
-        for offset_x in range(-MAX_OFFSET, MAX_OFFSET):
-            for offset_y in range(-MAX_OFFSET, MAX_OFFSET):
+        for offset_x in range(-max_offset, max_offset):
+            for offset_y in range(-max_offset, max_offset):
                 
                 offset_img = np.roll(channel_2, offset_x, axis=1)
                 offset_img = np.roll(offset_img, offset_y, axis=0)
@@ -33,7 +31,7 @@ def align(channel_1, channel_2, method='exhaustive', metric='ssd'):
 
     return displacement
 
-def main(imname, method, metric):
+def main(imname, method, metric, max_offset):
     # read in the image
     im = skio.imread(imname)
 
@@ -49,11 +47,11 @@ def main(imname, method, metric):
     r = im[2*height: 3*height]
 
     # align the images
-    displacement_g = align(b, g, method=method, metric=metric)
+    displacement_g = align(b, g, method=method, metric=metric, max_offset=max_offset)
     ag = np.roll(g, displacement_g[0], axis=1)
     ag = np.roll(ag, displacement_g[1], axis=0)
     
-    displacement_r = align(b, r, method=method, metric=metric)
+    displacement_r = align(b, r, method=method, metric=metric, max_offset=max_offset)
     ar = np.roll(r, displacement_r[0], axis=1)
     ar = np.roll(ar, displacement_r[1], axis=0)
     
@@ -76,8 +74,9 @@ def main(imname, method, metric):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("-i")
-    ap.add_argument("--method")
-    ap.add_argument("--metric")
+    ap.add_argument("--method", default='exhaustive')
+    ap.add_argument("--metric", default='ssd')
+    ap.add_argument("--offset", type=int, default=15)
 
     args = ap.parse_args()
-    main(args.i, args.method, args.metric)
+    main(args.i, args.method, args.metric, args.offset)
