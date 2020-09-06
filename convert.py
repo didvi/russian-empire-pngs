@@ -5,6 +5,8 @@ import skimage.io as skio
 import argparse
 import os
 
+MAX_OFFSET = 30
+
 def compute_metric(img_1, img_2, metric='ssd'):
     # Computes similarity metric for two images
     if metric == 'ssd':
@@ -18,8 +20,8 @@ def align(channel_1, channel_2, method='exhaustive', metric='ssd'):
         min_score = float('inf')
         displacement = ()
         
-        for offset_x in range(-15, 15):
-            for offset_y in range(-15, 15):
+        for offset_x in range(-MAX_OFFSET, MAX_OFFSET):
+            for offset_y in range(-MAX_OFFSET, MAX_OFFSET):
                 
                 offset_img = np.roll(channel_2, offset_x, axis=1)
                 offset_img = np.roll(offset_img, offset_y, axis=0)
