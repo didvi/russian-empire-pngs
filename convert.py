@@ -16,22 +16,31 @@ def compute_metric(img_1, img_2, metric='ssd'):
     if metric == 'ssd':
         return np.sum((img_1-img_2)**2)
 
-
 def _best_displacement(channel_1, channel_2, min_offset, max_offset, metric):
     min_score = float('inf')
     displacement = ()
     for offset_x in range(min_offset[0], max_offset[0]):
         for offset_y in range(min_offset[1], max_offset[1]):
 
-            offset_img = np.roll(channel_2, offset_x, axis=1)
-            offset_img = np.roll(offset_img, offset_y, axis=0)
+            channel_2_crop = _apply_displacement(channel_2, (offset_x, offset_y))
+            channel_1_crop = _apply_displacement(channel_1, (-offset_x, -offset_y))
 
-            score = compute_metric(channel_1, offset_img, metric)
+            score = compute_metric(channel_1_crop, channel_2_crop, metric)
+
             if score < min_score:
                 min_score = score
                 displacement = (offset_x, offset_y)
+
     return displacement
 
+def _apply_displacement(img, displacement):
+    offset_x = displacement[0]
+    offset_y = displacement[1]
+
+    # crop image
+    crop_img = img[offset_x:] if offset_x >= 0 else img[:offset_x]
+    crop_img = crop_img[:, offset_y:] if offset_y >= 0 else crop_img[:, :offset_y]
+    return crop_img
 
 def _align_pyramid(channel_1, channel_2, prev_displacement, scale, metric='ssd'):
     # todo test other ending condition
@@ -47,7 +56,6 @@ def _align_pyramid(channel_1, channel_2, prev_displacement, scale, metric='ssd')
 
     return _align_pyramid(channel_1, channel_2, displacement, scale * 2, metric=metric)
 
-
 def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=15):
     # Returns displacement (x, y) of channel 2 where channel 2 is offset to match channel 1 by some metric
     if method == 'pyramid':
@@ -59,7 +67,6 @@ def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=15
         return _best_displacement(channel_1, channel_2, (-max_offset, -max_offset), (max_offset, max_offset), metric)
 
     return (0, 0)
-
 
 def main(imname, method, metric, max_offset):
     # read in the image
@@ -79,13 +86,22 @@ def main(imname, method, metric, max_offset):
     # align the images
     displacement_g = align(b, g, method=method,
                            metric=metric, max_offset=max_offset)
-    ag = np.roll(g, displacement_g[0], axis=1)
-    ag = np.roll(ag, displacement_g[1], axis=0)
+    ag = _apply_displacement(g, displacement_g)
+    
+    # apply displacement for b and r so that the final shape matches
+    b = _apply_displacement(b, (-displacement_g[0], -displacement_g[1]))
+    r = _apply_displacement(r, (-displacement_g[0], -displacement_g[1]))
 
+    # find displacement for r
     displacement_r = align(b, r, method=method,
                            metric=metric, max_offset=max_offset)
-    ar = np.roll(r, displacement_r[0], axis=1)
-    ar = np.roll(ar, displacement_r[1], axis=0)
+    ar = _apply_displacement(r, displacement_r)
+    
+    # apply displacement for b and ag so that the final shape matches
+    # assuming that the first part aligned them, displacement by same amount should not
+    # modify previous displacements
+    b = _apply_displacement(b, (-displacement_r[0], -displacement_r[1]))
+    ag = _apply_displacement(ag, (-displacement_r[0], -displacement_r[1]))
 
     # print displacement
     print("Displacement for G channel: " + str(displacement_g))
@@ -95,7 +111,7 @@ def main(imname, method, metric, max_offset):
     im_out = np.dstack([ar, ag, b])
 
     # save the image
-    fname = "images/color_" + method + "_" + \
+    fname = "color/color_" + method + "_" + \
         metric + "_" + os.path.basename(imname).split(".")[0] + '.jpg'
     skio.imsave(fname, im_out)
 
