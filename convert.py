@@ -59,9 +59,11 @@ def _align_pyramid(channel_1, channel_2, prev_displacement, scale, metric='ssd')
 def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=15):
     # Returns displacement (x, y) of channel 2 where channel 2 is offset to match channel 1 by some metric
     if method == 'pyramid':
+        initial_scale = 1/36
         initial_displacement = _best_displacement(sk.transform.rescale(
-            channel_1, 1/16), sk.transform.rescale(channel_2, 1/16), (-2, -2), (2, 2), metric)
-        return _align_pyramid(channel_1, channel_2, scale=1/8, prev_displacement=initial_displacement)
+            channel_1, initial_scale), sk.transform.rescale(channel_2, initial_scale), (-2, -2), (2, 2), metric)
+        
+        return _align_pyramid(channel_1, channel_2, scale=initial_scale * 2, prev_displacement=initial_displacement)
 
     if method == 'exhaustive':
         return _best_displacement(channel_1, channel_2, (-max_offset, -max_offset), (max_offset, max_offset), metric)
