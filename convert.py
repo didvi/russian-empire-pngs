@@ -32,8 +32,8 @@ def detect_borders_gradient(img, axis=1):
     return grads > 150
 
 def remove_borders(img, edges):
-    """Naively removes borders on left and right side by removing all pixels between image edge and first detected edge
-    and all pixels between right image edge and last edge detected
+    """Naively removes borders on left and right side by removing all pixels between image edge and column with
+    the largest number of edge detections
     """
     MAX_BORDER_REMOVAL = 100
     # column with largest border detections for the first 10th of the image
@@ -109,7 +109,7 @@ def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=15
 
     return (0, 0)
 
-def main(imname, method, metric, max_offset, border):
+def main(imname, method, metric, max_offset, border, show):
     tic = time.time()
 
     # read in the image
@@ -167,8 +167,9 @@ def main(imname, method, metric, max_offset, border):
     print("Time elapsed: " + str(toc - tic))
 
     # display the image
-    # skio.imshow(im_out)
-    # skio.show()
+    if show:
+        skio.imshow(im_out)
+        skio.show()
 
 
 if __name__ == "__main__":
@@ -178,7 +179,7 @@ if __name__ == "__main__":
     ap.add_argument("--metric", default='ssd')
     ap.add_argument("--offset", type=int, default=15)
     ap.add_argument("--border", type=bool, default=False)
-
+    ap.add_argument("--show", type=bool, default=True)
     args = ap.parse_args()
 
     if os.path.isdir(args.i):
@@ -186,9 +187,9 @@ if __name__ == "__main__":
             if os.path.isfile(os.path.join(args.i, f)) :
                 try:
                     print("Converting " + f)
-                    main(os.path.join(args.i, f), args.method, args.metric, args.offset, args.border)
+                    main(os.path.join(args.i, f), args.method, args.metric, args.offset, args.border, args.show)
                 except ValueError as e:
                     print(e)
                     continue
     else:
-        main(args.i, args.method, args.metric, args.offset, args.border)
+        main(args.i, args.method, args.metric, args.offset, args.border, args.show)
