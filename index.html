@@ -1,0 +1,391 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+    <style>
+        body {
+            margin: auto;
+            text-align: left;
+            font-weight: 300;
+            font-family: 'Open Sans', sans-serif;
+            color: #121212;
+        }
+
+        div.body-class {
+            padding: 100px;
+            width: 1000px;
+            margin: auto;
+            text-align: left;
+            font-weight: 300;
+            font-family: 'Open Sans', sans-serif;
+            color: #121212;
+        }
+
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        code {
+            background-color: lightgrey;
+        }
+    </style>
+    <title>CS 194</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+    <script
+        type="text/x-mathjax-config">MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});</script>
+    <script type="text/javascript" async
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-MML-AM_CHTML">
+        </script>
+</head>
+
+<body>
+    <br />
+    <div class="body-class">
+        <h1 align="middle">Project 1</h1>
+        <h2 align="middle">Divi Schmidt</h2>
+        <br><br>
+
+        <h1>Overview</h1>
+        <p>
+            In this project, I colorized very old black and white photographs. The colors came from a combination of
+            three images,each taken with a different color filter, and thus giving us the three rgb color channels
+            needed for a color photo. The difficult part of this project was aligning these three images, as they were
+            not taken from the exact same position, nor aligned perfectly when they were uploaded together. In this
+            overview, I will walk you through the approach that i took to combine these images, and the problems I
+            encountered along the way
+        </p>
+        <h2>The Approach</h2>
+        <p>
+            The first approach that I took was the most simple one. First, I split the image into three equal parts.
+            Then, I performed an exhaustive search over a -15 to 15 pixel area and took the best alignment of the two
+            channels. In order to determine the best alignment of the two channels, I implemented two different image
+            metrics: Sum of Squared Distances and Normalized Cross Correlation. The results from these metrics are in
+            the results section below.
+        </p>
+        <br>
+        <p>Normalized cross correlation did not work very well, and sum of squared distances does
+            produce some good-looking results. Across the many more images, however, it is clear that some of the images
+            need a much more rigorous metric to determine the best alignment.
+            <br>
+            Additionally, this implementation was very slow on the larger tif files, which sometimes also require larger
+            search windows. In order to solve this problem. I implemented search with an image pyramid. This meant that
+            I first searched a small window using a very scaled down image (1/16 or 1/32, I didn't notice a big
+            difference between the two). Then, when I moved one step down in the image pyramid, I searched a small area
+            around the previously determined best alignment. This allowed for a very large speedup, making the
+            conversion for most large images take ~7 seconds to complete.
+        </p>
+
+        <br><br>
+        <h1>Thoughts on Failure</h1>
+        <h2>Thoughts</h2>
+        <p>If your algorithm failed to align any image, provide a brief explanation of why.</p>
+        <p>The original problem that I encountered with aligning images was buggy code. Without much of a way to test, I
+            struggled to figure out if my alignmnet was a result of a bug in my code, or just because my metrics were
+            not good enough to properly align images. After a lot of frustration, I finally did the wise thing and
+            created a test image that I knew the exact offsets for and could therefore test my code with.</p>
+        <br>
+        <p>Although there are some very promising results as shown above, there are also some images that fail with the
+            same metrics. The reason for this can vary with each image so I will talk about a couple specific cases.</p>
+        <br>
+        <img align='middle' src='final_imgs/pyramid_ssd_borderTrue_lady.jpg' width='400px' />
+        <figcaption align='middle'>Lady.
+            Displacement for G channel: (-87, 7)
+            Displacement for R channel: (-125, 16)</figcaption>
+        <p>For this image, I believe that the streaks on the bottom of the image throw off my alignment algorithm. The
+            red streak is quite large and distinct, which causes the ssd to have a high error if this streak is not
+            aligned. Clearly, we do not care if it is aligned, but we are not the ones determining the offsets. To test
+            out this theory, I cropped the lady image by 50 pixels on each side for each channel and then ran this
+            again. As you can see, this improved the alignment a lot and the red light streak is much smaller.</p>
+        <img align='middle' src='final_imgs/lady-cropped.jpg' width='400px' />
+        <br><br>
+        <p>For the other images that failed, I observed that they had the same strange borders or image degradations
+            that we saw with the lady. Here is another example. The top channel has a very dark border that is throwing
+            off the alignment of the train.</p>
+        <img align='middle' src='final_imgs/pyramid_ssd_borderTrue_train.jpg' width='400px' />
+        <br><br>
+
+        <h1>Bells and Whistles</h1>
+        <p>These were an attempt at solving the issues we saw above.</p>
+
+        <h2>Weighting SSD</h2>
+        <p>My first attempt at fixing this was to naively weight the pixels in the image so that the SSD would return a
+            higher error when the center was not aligned, instead of biasing towards the borders. I did this by creating
+            an array that had very large values in the center of the image, and low ones around the borders. This did
+            not work well as it was operating under the assumption that the center was always the most important part of
+            the image.
+        </p>
+        <p>My second attempt at fixing this was to weight the pixels using the canny edge detector. This caused the
+            edges in the image to be weighted much higher than the other parts of the image. This did not directly solve
+            the border problem, however it did weight the important parts of the image since there were borders detected
+            around people and other important objects.</p>
+
+        <h2>Automatic Border Cropping</h2>
+        <p>Instead of trying to improve the image metrics further, I instead opted to implement automatic border
+            cropping in an attempt to clean up the images and hopefully get better aligned images. I tried two different
+            methods for this.</p>
+
+        <h3>Canny Edge Detection</h3>
+        <p>My first attempt was using canny edge detection. However, I found it difficult to determine the best way to
+            use the information gleaned from this edge detector. The detector outputs an array the same size as the
+            image, but with boolean values for each pixel: edge or no edge. This array was very noisy as it was not
+            clear what was a border aka what we wanted to crop, or just an edge in the image aka very useful
+            information. In order to circumvent this, I only searched over the first 1/8th or last 1/8 of the image when
+            looking for the border of the image. Now in this window, I then took the column with the maximum number of
+            edge detections, and cropped the image on this column. This did not give good results and the crops often
+            cropped off important parts of the image instead of the borders. This is the reason why I tried to use this
+            for the pixel weighting as described above, as it seemed much more useful in this case.</p>
+
+        <h3>Horizontal Gradient</h3>
+        <p>In order to determine where the actual borders of the image were, I instead simplified my edge detection
+            algorithmm by taking the gradient only along the horizontal. This meant taking the value of Image[j, k + 1]
+            - Image[j, k - 1] for each pixel. This was very successful in detecting only the left and right borders of
+            the image, and nothing else. Here is an example:</p>
+        <img align='middle' src='final_imgs/gradient.png' width='400px' />
+        <figcaption align='middle'>Plot of horizontal gradient of image.
+        </figcaption>
+        <p>In order to detemine where the edges were. I then counted all gradients above 150 as an edge, and everything
+            else as not an edge. Then I took the sum for each column and took the argmax for the left half and the
+            argmax for the right half. Here is a plot of the column sums as as reference for the utility of this method.
+        </p>
+        <img align='middle' src='final_imgs/castle_edge_detections.png' width='400px' />
+        <figcaption align='middle'>Plot of border detections for each column of the image using a horizontal gradient.
+        </figcaption>
+        <p>As you can see, it is very clear where the left and right border is, and these calculations are not
+            distracted by the other non vertical edges in the scene. All of the images in the results section are using
+            this edge removal algorithm, but here are before and after images to see the real affect of this method.</p>
+
+        <div align="middle">
+            <table>
+                <tr>
+                    <td>
+                        <div background-color='black'>
+                            <img src="final_imgs/pyramid_ssd_borderTrue_emir.jpg" width="300px" />
+                            <figcaption align="middle">With Border. NOTE: there is also a white border that has been
+                                removed.</figcaption>
+                        </div>
+                    </td>
+                    <td>
+                        <img src="final_imgs/border_twice_emir.jpg" width="300px" />
+                        <figcaption align="middle">Without Border</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+
+        <h3>Vertical Gradient</h3>
+        <p>The last thing that I tried was to detect the horizontal borders and determine a better way to split the
+            image in to three separate channels. However, this did not work at all. The edges that were detected were in
+            the center of the image and rarely on the horizontal line. Looking at some more images, these separation
+            points are not very distinct a lot of the time. Some of these borders are just light grey, which made it
+            very difficult to detect with the canny edge detection or by taking a vertical gradient of the image. So I
+            reverted back to the original separation method.</p>
+
+
+
+        <br><br>
+        <h1>Results</h1>
+        <p>All Example Images</p>
+        <table>
+            <tr>
+                <td>
+                    <div background-color='black'>
+                        <img src="final_imgs/pyramid_ssd_border_twice_workshop.jpg" width="300px" />
+                    </div>
+                </td>
+                <td>
+                    <img src="final_imgs/pyramid_ssd_border_twice_train.jpg" width="300px" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <img src="final_imgs/pyramid_ssd_border_twice_tobolsk.jpg" width="300px" />
+                </td>
+                <td>
+                    <div background-color='black'>
+                        <img src="final_imgs/pyramid_ssd_border_twice_three_generations.jpg" width="300px" />
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <img src="final_imgs/pyramid_ssd_border_twice_self_portrait.jpg" width="300px" />
+                </td>
+                <td>
+                    <div background-color='black'>
+                        <img src="final_imgs/pyramid_ssd_border_twice_onion_church.jpg" width="300px" />
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <img src="final_imgs/pyramid_ssd_border_twice_melons.jpg" width="300px" />
+                </td>
+                <td>
+                    <div background-color='black'>
+                        <img src="final_imgs/pyramid_ssd_border_twice_lady.jpg" width="300px" />
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <img src="final_imgs/pyramid_ssd_border_twice_icon.jpg" width="300px" />
+                </td>
+                <td>
+                    <div background-color='black'>
+                        <img src="final_imgs/pyramid_ssd_border_twice_harvesters.jpg" width="300px" />
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <img src="final_imgs/pyramid_ssd_border_twice_castle.jpg" width="300px" />
+                </td>
+                <td>
+                    <div background-color='black'>
+                        <img src="final_imgs/border_twice_emir.jpg" width="300px" />
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <img src="final_imgs/exhaustive_ssd_borderFalse_cathedral.jpg" width="300px" />
+                </td>
+                <td>
+                    <div background-color='black'>
+                        <img src="final_imgs/exhaustive_ssd_borderFalse_monastery.jpg" width="300px" />
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <h2>Offsets</h2>
+        <div>
+            <br>
+            Converting workshop.tif<br>
+            Removed borders of size: (90, 94)<br>
+            Displacement for G channel: (-54, 2)<br>
+            Displacement for R channel: (-101, 13)<br>
+            Time elapsed: 15.157158136367798<br>
+            <br>
+            Converting emir.tif<br>
+            Removed borders of size: (95, 82)<br>
+            Displacement for G channel: (-49, -24)<br>
+            Displacement for R channel: (-106, -42)<br>
+            Time elapsed: 15.426254034042358<br>
+            <br>
+            Converting three_generations.tif<br>
+            Removed borders of size: (98, 92)<br>
+            Displacement for G channel: (-54, -12)<br>
+            Displacement for R channel: (-114, -10)<br>
+            Time elapsed: 14.984628915786743<br>
+            <br>
+            Converting castle.tif<br>
+            Removed borders of size: (69, 89)<br>
+            Displacement for G channel: (-66, 2)<br>
+            Displacement for R channel: (-98, -3)<br>
+            Time elapsed: 15.638453006744385<br>
+            <br>
+            Converting melons.tif<br>
+            Removed borders of size: (98, 96)<br>
+            Displacement for G channel: (-83, -4)<br>
+            Displacement for R channel: (-126, 17)<br>
+            Time elapsed: 15.753090143203735<br>
+            <br>
+            Converting onion_church.tif<br>
+            Removed borders of size: (0, 100)<br>
+            Displacement for G channel: (-53, -23)<br>
+            Displacement for R channel: (-108, -36)<br>
+            Time elapsed: 16.50060486793518<br>
+            <br>
+            Converting train.tif<br>
+            Removed borders of size: (68, 86)<br>
+            Displacement for G channel: (-42, 2)<br>
+            Displacement for R channel: (-126, -15)<br>
+            Time elapsed: 16.243185997009277<br>
+            <br>
+            Converting tobolsk.jpg<br>
+            Removed borders of size: (16, 7)<br>
+            Displacement for G channel: (-3, -2)<br>
+            Displacement for R channel: (-6, -3)<br>
+            Time elapsed: 0.16897296905517578<br>
+            <br>
+            Converting icon.tif<br>
+            Removed borders of size: (91, 89)<br>
+            Displacement for G channel: (-42, -17)<br>
+            Displacement for R channel: (-91, -23)<br>
+            Time elapsed: 1.064661979675293<br>
+            <br>
+            Converting self_portrait.tif<br>
+            Removed borders of size: (0, 100)<br>
+            Displacement for G channel: (-76, 1)<br>
+            Displacement for R channel: (-126, 5)<br>
+            Time elapsed: 16.578269004821777<br>
+            <br>
+            Converting harvesters.tif<br>
+            Removed borders of size: (64, 83)<br>
+            Displacement for G channel: (-60, -15)<br>
+            Displacement for R channel: (-126, -13)<br>
+            Time elapsed: 15.875388860702515<br>
+            <br>
+            Converting lady.tif<br>
+            Removed borders of size: (98, 99)<br>
+            Displacement for G channel: (-87, 8)<br>
+            Displacement for R channel: (-125, 12)<br>
+            Time elapsed: 16.103732109069824<br>
+            Converting monastery.jpg<br>
+            Removed borders of size: (17, 14)<br>
+            Displacement for G channel: (3, -2)<br>
+            Displacement for R channel: (-7, -3)<br>
+            Time elapsed: 0.45801305770874023<br>
+            Converting tobolsk.jpg<br>
+            Removed borders of size: (17, 8)<br>
+            Displacement for G channel: (-3, -2)<br>
+            Displacement for R channel: (-6, -3)<br>
+            Time elapsed: 0.444627046585083<br>
+            Converting cathedral.jpg<br>
+            Removed borders of size: (12, 8)<br>
+            Displacement for G channel: (-5, -2)<br>
+            Displacement for R channel: (-12, -3)<br>
+            Time elapsed: 0.4329562187194824<br>
+        </div>
+        <br><br>
+
+        <h2>My Chosen Images</h2>
+        <p>The result of your algorithm on a few examples of your own choosing, downloaded from the Prokudin-Gorskii
+            collection.
+        </p>
+        <table>
+            <tr>
+                <td>
+                    <img src="final_imgs/exhaustive_ssd_borderFalse_flower.jpg" width="300px" />
+                    <figcaption>Removed borders of size: (12, 13)
+                        Displacement for G channel: (-5, 0)
+                        Displacement for R channel: (-7, 1)</figcaption>
+                </td>
+                <td>
+                    <div background-color='black'>
+                        <img src="final_imgs/exhaustive_ssd_borderFalse_holy.jpg" width="300px" />
+                        <figcaption>Removed borders of size: (3, 12)
+                            Displacement for G channel: (-1, 0)
+                            Displacement for R channel: (-2, 0)</figcaption>
+                    </div>
+                </td>
+                <td>
+                    <div background-color='black'>
+                        <img src="final_imgs/exhaustive_ssd_borderFalse_lake.jpg" width="300px" />
+                        <figcaption>Removed borders of size: (2, 14)
+                            Displacement for G channel: (-1, 0)
+                            Displacement for R channel: (-3, 0)</figcaption>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+</body>
+
+</html>

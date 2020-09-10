@@ -13,7 +13,7 @@ import math
 import time
 
 # BORDER DETECTION
-def detect_borders_canny(img, sigma=3):
+def detect_borders_canny(img, sigma=1):
     # did not work very well for removing borders
     edges = feature.canny(img, sigma=sigma)
     return edges
@@ -46,7 +46,7 @@ def remove_borders(img, edges):
     column_sum = np.sum(edges[:, -MAX_BORDER_REMOVAL:], axis=0)
     right_border_i = np.argmax(column_sum) + (img.shape[1] - MAX_BORDER_REMOVAL)
     
-    print("Removed borders at index: " + str((border_i, img.shape[1] - right_border_i)))
+    print("Removed borders of size: " + str((border_i, img.shape[1] - right_border_i)))
     return img[:, border_i:right_border_i]
 
 def split_image_into_three(img, naive=True):
@@ -134,16 +134,16 @@ def _apply_displacement(img, displacement):
     return crop_img
 
 def _align_pyramid(channel_1, channel_2, prev_displacement, scale, metric='ssd'):
-    # todo test other ending condition
-    if scale >= 1:
+    if scale > 1:
         return prev_displacement
 
     # rescale channels
     rescaled_1 = sk.transform.rescale(channel_1, scale)
     rescaled_2 = sk.transform.rescale(channel_2, scale)
 
-    displacement = _best_displacement(rescaled_1, rescaled_2, ((
-        prev_displacement[0] - 1) * 2, (prev_displacement[1] - 1) * 2), ((prev_displacement[0] + 1) * 2, (prev_displacement[1] + 1) * 2), metric)
+    min_displacement = ((prev_displacement[0] - 1) * 2, (prev_displacement[1] - 1) * 2)
+    max_displacement = ((prev_displacement[0] + 1) * 2, (prev_displacement[1] + 1) * 2)
+    displacement = _best_displacement(rescaled_1, rescaled_2, min_displacement, max_displacement, metric)
 
     return _align_pyramid(channel_1, channel_2, displacement, scale * 2, metric=metric)
 
@@ -151,8 +151,12 @@ def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=16
     # Returns displacement (x, y) of channel 2 where channel 2 is offset to match channel 1 by some metric
     if method == 'pyramid':
         initial_scale = 1/32
-        initial_displacement = _best_displacement(sk.transform.rescale(
-            channel_1, initial_scale), sk.transform.rescale(channel_2, initial_scale), (-4, -4), (4, 4), metric)
+
+        initial_displacement = _best_displacement(sk.transform.rescale(channel_1, initial_scale), 
+                                                  sk.transform.rescale(channel_2, initial_scale), 
+                                                  (-2, -2), 
+                                                  (2, 2), 
+                                                  metric)
         
         return _align_pyramid(channel_1, channel_2, scale=initial_scale * 2, prev_displacement=initial_displacement)
 
@@ -160,6 +164,10 @@ def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=16
         return _best_displacement(channel_1, channel_2, (-max_offset, -max_offset), (max_offset, max_offset), metric)
 
     return (0, 0)
+
+def show(i):
+    skio.imshow(i)
+    skio.show()
 
 # MAIN
 def main(imname, method, metric, max_offset, border, show):
@@ -173,11 +181,11 @@ def main(imname, method, metric, max_offset, border, show):
     
     # remove borders that would throw off our image metrics
     if not border:
-        edges = detect_borders_gradient(im)
+        edges = detect_borders_canny(im)
         im = remove_borders(im, edges)
 
     b, g, r = split_image_into_three(im)
-    
+    detect_borders_gradient(b)
     # align the images
     displacement_g = align(b, g, method=method,
                            metric=metric, max_offset=max_offset)
@@ -188,7 +196,7 @@ def main(imname, method, metric, max_offset, border, show):
     r = _apply_displacement(r, (-displacement_g[0], -displacement_g[1]))
 
     # find displacement for r
-    displacement_r = align(ag, r, method=method,
+    displacement_r = align(b, r, method=method,
                            metric=metric, max_offset=max_offset)
     ar = _apply_displacement(r, displacement_r)
     
