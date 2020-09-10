@@ -81,24 +81,25 @@ def split_image_into_three(img, naive=True):
         return 
 
 # IMAGE SIMILARITY METRICS
-def pixel_weights(img):
-    # return array which represents how important each pixel is
-    # edges = detect_borders_canny(img, sigma=2)
-    # edges = np.multiply(edges.astype(int), 4)
-    # return edges
-    border = img.shape[0] // 3
-    border = border if border % 2 == 0 else border + 1
-    ones = np.ones((img.shape[0] - border, img.shape[1] - border))
-    weights = np.pad(ones, pad_width=border // 2, mode='constant', constant_values=0)
-    return weights * 4 + 1
-
-def compute_metric(img_1, img_2, metric='ssd', weight_images=False)  :
+def compute_metric(img_1, img_2, metric='ssd'):
     # Computes similarity metric for two images
-    if weight_images:
-        weights = pixel_weights(img_1)
-        img_1 = np.multiply(weights, img_1)
-        img_2 = np.multiply(weights, img_2)
+    if metric == 'gradient':
+        def calc_grad(row):
+            before = row[:-2]
+            after = row[2:]
+            return after - before
 
+        grads = np.apply_along_axis(calc_grad, 1, img_1)
+        b_min = np.min(grads)
+        b_max = np.max(grads)
+        img_1 = (grads - b_min) / (b_max - b_min) * 255
+        
+        grads = np.apply_along_axis(calc_grad, 1, img_2)
+        b_min = np.min(grads)
+        b_max = np.max(grads)
+        img_2 = (grads - b_min) / (b_max - b_min) * 255
+        return np.sum((img_1-img_2)**2) / (img_1.shape[0] * img_1.shape[1])
+    
     if metric == 'ncc':
         return np.dot(img_1.flatten() / np.linalg.norm(img_1.flatten()), img_2.flatten() / np.linalg.norm(img_2.flatten()))
 
@@ -151,7 +152,7 @@ def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=16
     if method == 'pyramid':
         initial_scale = 1/32
         initial_displacement = _best_displacement(sk.transform.rescale(
-            channel_1, initial_scale), sk.transform.rescale(channel_2, initial_scale), (-max_offset // 16, -max_offset // 16), (max_offset // 16, max_offset // 16), metric)
+            channel_1, initial_scale), sk.transform.rescale(channel_2, initial_scale), (-4, -4), (4, 4), metric)
         
         return _align_pyramid(channel_1, channel_2, scale=initial_scale * 2, prev_displacement=initial_displacement)
 
@@ -176,7 +177,7 @@ def main(imname, method, metric, max_offset, border, show):
         im = remove_borders(im, edges)
 
     b, g, r = split_image_into_three(im)
-
+    
     # align the images
     displacement_g = align(b, g, method=method,
                            metric=metric, max_offset=max_offset)
