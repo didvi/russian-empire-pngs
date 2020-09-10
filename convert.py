@@ -29,7 +29,7 @@ def detect_borders_gradient(img, axis=1):
     b_max = np.max(grads)
     
     grads = (grads - b_min) / (b_max - b_min) * 255
-    return grads > 150
+    return grads > 170
 
 def remove_borders(img, edges):
     """Naively removes borders on left and right side by removing all pixels between image edge and column with
@@ -47,6 +47,36 @@ def remove_borders(img, edges):
     print("Removed borders at index: " + str((border_i, img.shape[1] - right_border_i)))
     return img[:, border_i:right_border_i]
 
+def split_image_into_three(img, naive=True):
+    height = img.shape[0]
+
+    if naive:
+        # compute the height of each part (just 1/3 of total)
+        height = height // 3
+        # separate color channels
+        b = img[:height]
+        g = img[height: 2*height]
+        r = img[2*height: 3*height]
+        return b, g, r
+
+    else:
+        # Note: this does not work at all for most images, since the borders are lightly colored
+        # use gradient calculation to determine horizontal borders
+        edges = detect_borders_gradient(img, axis=0)
+        skio.imshow(edges)
+        skio.show()
+        # calculate rows with maximum edge detections
+        row_sum = np.sum(edges, axis=1)
+        split_1 = np.argmax(row_sum[:height // 2])
+        split_2 = np.argmax(row_sum[height // 2:])
+        print("Splits are " + str((split_1, split_2)))
+        skio.imshow(img[:split_1])
+        skio.show()
+        skio.imshow(img[split_1:split_2])
+        skio.show()
+        skio.imshow(img[split_2:])
+        skio.show()
+        return 
 def compute_metric(img_1, img_2, metric='ssd'):
     # Computes similarity metric for two images
     if metric == 'ncc':
@@ -123,13 +153,7 @@ def main(imname, method, metric, max_offset, border, show):
         edges = detect_borders_gradient(im)
         im = remove_borders(im, edges)
 
-    # compute the height of each part (just 1/3 of total)
-    height = np.floor(im.shape[0] / 3.0).astype(np.int)
-
-    # separate color channels
-    b = im[:height]
-    g = im[height: 2*height]
-    r = im[2*height: 3*height]
+    b, g, r = split_image_into_three(im)
 
     # align the images
     displacement_g = align(b, g, method=method,
