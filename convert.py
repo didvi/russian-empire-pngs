@@ -12,13 +12,15 @@ import os
 import math
 import time
 
+# BORDER DETECTION
 def detect_borders_canny(img, sigma=3):
-    # did not work very well -- unused 
+    # did not work very well for removing borders
     edges = feature.canny(img, sigma=sigma)
     return edges
 
 def detect_borders_gradient(img, axis=1):
     # calculates horizontal gradient across image in order to detect borders
+    # @source https://www.cis.rit.edu/people/faculty/rhody/EdgeDetection.htm#:~:text=Vertical%20edges%20can%20be%20detected,the%20direction%20of%20the%20transition.
     def calc_grad(row):
         before = row[:-2]
         after = row[2:]
@@ -77,14 +79,33 @@ def split_image_into_three(img, naive=True):
         skio.imshow(img[split_2:])
         skio.show()
         return 
-def compute_metric(img_1, img_2, metric='ssd'):
+
+# IMAGE SIMILARITY METRICS
+def pixel_weights(img):
+    # return array which represents how important each pixel is
+    # edges = detect_borders_canny(img, sigma=2)
+    # edges = np.multiply(edges.astype(int), 4)
+    # return edges
+    border = img.shape[0] // 3
+    border = border if border % 2 == 0 else border + 1
+    ones = np.ones((img.shape[0] - border, img.shape[1] - border))
+    weights = np.pad(ones, pad_width=border // 2, mode='constant', constant_values=0)
+    return weights * 4 + 1
+
+def compute_metric(img_1, img_2, metric='ssd', weight_images=False)  :
     # Computes similarity metric for two images
+    if weight_images:
+        weights = pixel_weights(img_1)
+        img_1 = np.multiply(weights, img_1)
+        img_2 = np.multiply(weights, img_2)
+
     if metric == 'ncc':
         return np.dot(img_1.flatten() / np.linalg.norm(img_1.flatten()), img_2.flatten() / np.linalg.norm(img_2.flatten()))
 
     if metric == 'ssd':
         return np.sum((img_1-img_2)**2)
 
+# ALIGN IMAGES
 def _best_displacement(channel_1, channel_2, min_offset, max_offset, metric):
     min_score = float('inf')
     displacement = ()
@@ -128,9 +149,9 @@ def _align_pyramid(channel_1, channel_2, prev_displacement, scale, metric='ssd')
 def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=15):
     # Returns displacement (x, y) of channel 2 where channel 2 is offset to match channel 1 by some metric
     if method == 'pyramid':
-        initial_scale = 1/(2**(math.log2(max_offset) // 1))
+        initial_scale = 1/32
         initial_displacement = _best_displacement(sk.transform.rescale(
-            channel_1, initial_scale), sk.transform.rescale(channel_2, initial_scale), (-2, -2), (2, 2), metric)
+            channel_1, initial_scale), sk.transform.rescale(channel_2, initial_scale), (-max_offset // 32, -max_offset // 32), (max_offset // 5, max_offset // 5), metric)
         
         return _align_pyramid(channel_1, channel_2, scale=initial_scale * 2, prev_displacement=initial_displacement)
 
@@ -139,6 +160,7 @@ def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=15
 
     return (0, 0)
 
+# MAIN
 def main(imname, method, metric, max_offset, border, show):
     tic = time.time()
 
@@ -185,7 +207,7 @@ def main(imname, method, metric, max_offset, border, show):
     # save the image
     fname = "color/color_" + method + "_" + \
         metric + "_" + str(border) + "_" + os.path.basename(imname).split(".")[0] + '.jpg'
-    skio.imsave(fname, im_out)
+    # skio.imsave(fname, im_out)
 
     toc = time.time()
     print("Time elapsed: " + str(toc - tic))
