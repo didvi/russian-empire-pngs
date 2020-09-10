@@ -103,7 +103,7 @@ def compute_metric(img_1, img_2, metric='ssd', weight_images=False)  :
         return np.dot(img_1.flatten() / np.linalg.norm(img_1.flatten()), img_2.flatten() / np.linalg.norm(img_2.flatten()))
 
     if metric == 'ssd':
-        return np.sum((img_1-img_2)**2)
+        return np.sum((img_1-img_2)**2) / (img_1.shape[0] * img_1.shape[1])
 
 # ALIGN IMAGES
 def _best_displacement(channel_1, channel_2, min_offset, max_offset, metric):
@@ -146,12 +146,12 @@ def _align_pyramid(channel_1, channel_2, prev_displacement, scale, metric='ssd')
 
     return _align_pyramid(channel_1, channel_2, displacement, scale * 2, metric=metric)
 
-def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=15):
+def align(channel_1, channel_2, method='exhaustive', metric='ssd', max_offset=16):
     # Returns displacement (x, y) of channel 2 where channel 2 is offset to match channel 1 by some metric
     if method == 'pyramid':
         initial_scale = 1/32
         initial_displacement = _best_displacement(sk.transform.rescale(
-            channel_1, initial_scale), sk.transform.rescale(channel_2, initial_scale), (-max_offset // 32, -max_offset // 32), (max_offset // 5, max_offset // 5), metric)
+            channel_1, initial_scale), sk.transform.rescale(channel_2, initial_scale), (-max_offset // 16, -max_offset // 16), (max_offset // 16, max_offset // 16), metric)
         
         return _align_pyramid(channel_1, channel_2, scale=initial_scale * 2, prev_displacement=initial_displacement)
 
@@ -187,7 +187,7 @@ def main(imname, method, metric, max_offset, border, show):
     r = _apply_displacement(r, (-displacement_g[0], -displacement_g[1]))
 
     # find displacement for r
-    displacement_r = align(b, r, method=method,
+    displacement_r = align(ag, r, method=method,
                            metric=metric, max_offset=max_offset)
     ar = _apply_displacement(r, displacement_r)
     
@@ -217,13 +217,12 @@ def main(imname, method, metric, max_offset, border, show):
         skio.imshow(im_out)
         skio.show()
 
-
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("-i")
     ap.add_argument("--method", default='exhaustive')
     ap.add_argument("--metric", default='ssd')
-    ap.add_argument("--offset", type=int, default=15)
+    ap.add_argument("--offset", type=int, default=16)
     ap.add_argument("--border", type=bool, default=False)
     ap.add_argument("--show", type=bool, default=True)
     args = ap.parse_args()
