@@ -12,81 +12,62 @@ Displacement for G channel: (-49, -24)
 Displacement for R channel: (-106, -42)
 Time elapsed: 15.426254034042358
 
-Converting monastery.jpg
-Removed borders of size: (16, 6)
-Displacement for G channel: (6, 0)
-Displacement for R channel: (-12, -94)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
-Time elapsed: 0.13999414443969727
 Converting three_generations.tif
 Removed borders of size: (98, 92)
 Displacement for G channel: (-54, -12)
 Displacement for R channel: (-114, -10)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 14.984628915786743
+
 Converting castle.tif
 Removed borders of size: (69, 89)
 Displacement for G channel: (-66, 2)
 Displacement for R channel: (-98, -3)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 15.638453006744385
+
 Converting melons.tif
 Removed borders of size: (98, 96)
 Displacement for G channel: (-83, -4)
 Displacement for R channel: (-126, 17)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 15.753090143203735
+
 Converting onion_church.tif
 Removed borders of size: (0, 100)
 Displacement for G channel: (-53, -23)
 Displacement for R channel: (-108, -36)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 16.50060486793518
+
 Converting train.tif
 Removed borders of size: (68, 86)
 Displacement for G channel: (-42, 2)
 Displacement for R channel: (-126, -15)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 16.243185997009277
+
 Converting tobolsk.jpg
 Removed borders of size: (16, 7)
 Displacement for G channel: (-3, -2)
 Displacement for R channel: (-6, -3)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 0.16897296905517578
+
 Converting icon.tif
 Removed borders of size: (91, 89)
 Displacement for G channel: (-42, -17)
 Displacement for R channel: (-91, -23)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
-Time elapsed: 15.94622278213501
-Converting test.png
-Removed borders of size: (0, 100)
-Displacement for G channel: (-10, 10)
-Displacement for R channel: (0, -5)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 1.064661979675293
-Converting cathedral.jpg
-Removed borders of size: (11, 7)
-Displacement for G channel: (-1, -3)
-Displacement for R channel: (-15, -123)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
-Time elapsed: 0.1732780933380127
+
 Converting self_portrait.tif
 Removed borders of size: (0, 100)
 Displacement for G channel: (-76, 1)
 Displacement for R channel: (-126, 5)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 16.578269004821777
+
 Converting harvesters.tif
 Removed borders of size: (64, 83)
 Displacement for G channel: (-60, -15)
 Displacement for R channel: (-126, -13)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 15.875388860702515
+
 Converting lady.tif
 Removed borders of size: (98, 99)
 Displacement for G channel: (-87, 8)
 Displacement for R channel: (-125, 12)
-Lossy conversion from float64 to uint8. Range [0, 1]. Convert image to uint8 prior to saving to suppress this warning.
 Time elapsed: 16.103732109069824
